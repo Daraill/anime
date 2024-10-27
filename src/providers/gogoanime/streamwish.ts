@@ -1,36 +1,9 @@
 import axios from "axios";
-import * as cheerio from "cheerio";
-import { unpack, detect } from "unpacker";
+import { detect, unpack } from "./unpacker";
 
 interface DecData {
   m3u8?: string;
   slides?: string;
-}
-
-/**
- * Checks if the script is packed using P.A.C.K.E.R.
- * @param script The JavaScript code as a string.
- * @returns True if packed, false otherwise.
- */
-function isPackerEncoded(script: string): boolean {
-  return /eval\(function\(p,a,c,k,e,d\)\{/.test(script);
-}
-
-/**
- * Unpacks P.A.C.K.E.R. encoded JavaScript using the 'unpacker' package.
- * @param script The packed JavaScript code.
- * @returns The unpacked JavaScript code or null if unpacking fails.
- */
-function unpackPacker(script: string): string | null {
-  if (detect(script)) {
-    try {
-      return unpack(script);
-    } catch (error) {
-      console.error("Error unpacking script with unpacker:", error);
-      return null;
-    }
-  }
-  return script; // Return the original script if it's not packed
 }
 
 /**
@@ -59,28 +32,33 @@ export const streamwish = async (
   embedLink: string,
 ): Promise<DecData | null> => {
   try {
+    const fetchStart = Date.now();
     // Fetch the embed page
     const response = await axios.get(embedLink, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       },
     });
+    const fetchEnd = Date.now();
+    // console.log(`Fetching embed page took ${fetchEnd - fetchStart} ms`);
+
     const html = response.data;
-    const $ = cheerio.load(html);
 
-    // Select all <script> tags
-    const scripts = $("script");
-
+    // Regular expression to extract all <script>...</script> contents
+    const scriptRegex = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
     let scriptContent: string | null = null;
 
-    // Find the script containing 'm3u8'
-    scripts.each((_, el) => {
-      const script = $(el).html();
+    const scriptStart = Date.now();
+    let match: RegExpExecArray | null;
+    while ((match = scriptRegex.exec(html)) !== null) {
+      const script = match[1];
       if (script && script.includes("m3u8")) {
         scriptContent = script;
-        return false; // Exit the loop once found
+        break; // Exit the loop once the desired script is found
       }
-    });
+    }
+    const scriptEnd = Date.now();
+    // console.log(`Extracting script took ${scriptEnd - scriptStart} ms`);
 
     if (!scriptContent) {
       console.warn("No script containing m3u8 found.");
@@ -88,17 +66,21 @@ export const streamwish = async (
     }
 
     // Check if the script is packed using P.A.C.K.E.R.
-    if (isPackerEncoded(scriptContent)) {
-      const unpacked = unpackPacker(scriptContent);
-      if (unpacked) {
+    const packerStart = Date.now();
+    if (detect(scriptContent)) {
+      try {
+        const unpacked = unpack(scriptContent);
         scriptContent = unpacked;
-      } else {
+      } catch (error) {
         console.warn("Unpacking failed or resulted in null.");
         return null;
       }
     }
+    const packerEnd = Date.now();
+    // console.log(`Packer processing took ${packerEnd - packerStart} ms`);
 
     // Extract the master URL using improved regex
+    const extractStart = Date.now();
     let masterUrlMatch =
       scriptContent.match(/file\s*:\s*"([^"]+\.m3u8[^"]*)"/) ||
       scriptContent.match(/src\s*:\s*"([^"]+\.m3u8[^"]*)"/);
@@ -121,6 +103,8 @@ export const streamwish = async (
       // Extract the slides URL
       slidesUrl = extractSlidesUrl(scriptContent);
     }
+    const extractEnd = Date.now();
+    // console.log(`URL extraction took ${extractEnd - extractStart} ms`);
 
     // Structure the result to match DecData
     const result: DecData = {};
@@ -142,22 +126,25 @@ export const streamwish = async (
 
 // Example usage
 // (async () => {
-//   const embedLink = 'https://awish.pro/e/62t32zipr5o6';
+//   const embedLink = "https://awish.pro/e/62t32zipr5o6";
+//   const totalStart = Date.now();
 //   const result = await streamwish(embedLink);
+//   const totalEnd = Date.now();
+//   console.log(`Total processing time: ${totalEnd - totalStart} ms`);
 
 //   if (!result) {
-//     console.log('No Master URL or Slides URL found.');
+//     console.log("No Master URL or Slides URL found.");
 //   } else {
-//     if (result.primarySrc) {
-//       console.log('Primary Source Found:', result.primarySrc.file);
+//     if (result.m3u8) {
+//       console.log("Master URL Found:", result.m3u8);
 //     } else {
-//       console.log('Primary Source not found.');
+//       console.log("Master URL not found.");
 //     }
 
-//     if (result.backupSrc) {
-//       console.log('Backup Source Found:', result.backupSrc.file);
+//     if (result.slides) {
+//       console.log("Slides URL Found:", result.slides);
 //     } else {
-//       console.log('Backup Source not found.');
+//       console.log("Slides URL not found.");
 //     }
 //   }
 // })();

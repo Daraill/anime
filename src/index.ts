@@ -1,7 +1,7 @@
 // * Exporting from providers
 export { fetchInfoGogo } from "./providers/gogoanime/fetchInfo";
 export { fetchSourcesGogo } from "./providers/gogoanime/fetchSources";
-export { gogoCDN } from "./providers/gogoanime/gogocdn";
+export { gogocdn } from "./providers/gogoanime/gogocdn";
 export { streamwish } from "./providers/gogoanime/streamwish";
 
 export { fetchInfoAnimepahe } from "./providers/animepahe/fetchInfo";

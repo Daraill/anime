@@ -1,5 +1,4 @@
 import axios from "axios";
-import * as cheerio from "cheerio";
 import CryptoJS from "crypto-js";
 
 interface DecData {
@@ -31,11 +30,33 @@ const cleanDecData = (raw: any): DecData => {
 };
 
 /**
+ * Extracts the value of a specified attribute from a script tag with a given data-name.
+ * @param html - The HTML string to search within.
+ * @param dataName - The value of the data-name attribute to match.
+ * @param targetAttr - The attribute whose value needs to be extracted.
+ * @returns The extracted attribute value or null if not found.
+ */
+const extractScriptAttr = (
+  html: string,
+  dataName: string,
+  targetAttr: string,
+): string | null => {
+  // Create a regex pattern to match the script tag with the specified data-name
+  const regex = new RegExp(
+    `<script[^>]*data-name=["']${dataName}["'][^>]*${targetAttr}=["']([^"']+)["'][^>]*>`,
+    "i",
+  );
+
+  const match = html.match(regex);
+  return match ? match[1] : null;
+};
+
+/**
  * Retrieves and decrypts data from the GogoCDN server using specified decryption logic.
  * @param embedLink - The embed page URL.
  * @returns The cleaned decrypted data or null if not found.
  */
-export const gogoCDN = async (embedLink: string): Promise<DecData | null> => {
+export const gogocdn = async (embedLink: string): Promise<DecData | null> => {
   const cryptoKeys = {
     key: CryptoJS.enc.Utf8.parse("37911490979715163134003223491201"),
     secKey: CryptoJS.enc.Utf8.parse("54674138327930866480207815084989"),
@@ -53,10 +74,9 @@ export const gogoCDN = async (embedLink: string): Promise<DecData | null> => {
 
     // Fetch the embed page
     const { data } = await axios.get(embedLink);
-    const $ = cheerio.load(data);
 
-    // Extract the encrypted token from the script tag
-    const encToken = $("script[data-name='episode']").attr("data-value");
+    // Extract the encrypted token using regex
+    const encToken = extractScriptAttr(data, "episode", "data-value");
 
     if (!encToken) {
       console.error("No data-value attribute found");
@@ -115,3 +135,11 @@ export const gogoCDN = async (embedLink: string): Promise<DecData | null> => {
     return null;
   }
 };
+
+// Example usage
+// (async () => {
+//   const result = await gogocdn(
+//     "https://s3taku.com/embedplus?id=MjM1OTYx&token=pfKOE-yfRqL7lCHRPG3Mvw&expires=1730050762"
+//   );
+//   console.log(result);
+// })();

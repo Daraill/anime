@@ -246,14 +246,7 @@ curl "http://localhost:8080/info?id=21&provider=anilist"
     "airingAt": 1720312200,
     "timeUntilAiring": 591333,
     "episode": 1111
-  },
-  "streamingEpisodes": [
-    {
-      "title": "Episode 130 - Scent of Danger! the Seventh Member Is Nico Robin!",
-      "thumbnail": "https://img1.ak.crunchyroll.com/i/spire4-tmb/d80b3fbce742e6deb4d2caf37d08ca6e1395451246_full.jpg"
-    }
-    // Additional episodes...
-  ]
+  }
 }
 ```
 
@@ -433,9 +426,9 @@ curl "http://localhost:8080/sources?id=one-piece&ep=1&provider=gogoanime"
 
 ```plaintext
 Diogenes/
-│
+|
 ├── bun.lockb
-├── logs/
+├── logs
 │   ├── combined.log
 │   ├── error.log
 │   └── exceptions.log
@@ -443,44 +436,40 @@ Diogenes/
 ├── package-lock.json
 ├── tsconfig.json
 ├── README.md
-│
-├── src/
+├── src
 │   ├── app.ts
 │   ├── index.ts
-│   │
-│   ├── providers/
-│   │   ├── anilist/
+│   ├── providers
+│   │   ├── anilist
 │   │   │   ├── fetchInfo.ts
 │   │   │   └── queries.ts
-│   │   ├── animepahe/
+│   │   ├── animepahe
 │   │   │   ├── fetchInfo.ts
 │   │   │   └── fetchSources.ts
-│   │   ├── gogoanime/
+│   │   ├── gogoanime
+│   │   │   ├── dood.ts
 │   │   │   ├── fetchInfo.ts
 │   │   │   ├── fetchSources.ts
 │   │   │   ├── gogocdn.ts
-│   │   │   └── streamwish.ts
-│   │   ├── malsync/
+│   │   │   ├── streamwish.ts
+│   │   │   └── unpacker.ts
+│   │   ├── malsync
 │   │   │   └── fetchMappings.ts
-│   │   └── zoro/
+│   │   └── zoro
 │   │       ├── fetchEpisodes.ts
 │   │       ├── fetchInfo.ts
 │   │       ├── fetchServers.ts
 │   │       └── fetchSources.ts
-│   │
-│   ├── routes/
+│   ├── routes
 │   │   ├── episodes.ts
 │   │   ├── info.ts
 │   │   ├── mappings.ts
 │   │   ├── servers.ts
 │   │   └── sources.ts
-│   │
-│   ├── services/
+│   ├── services
 │   │   ├── fetchProxy.ts
-│   │   ├── proxies.json
-│   │   └── verifyProxy.ts
-│   │
-│   └── utils/
+│   │   └── proxies.json
+│   └── utils
 │       ├── cacheSetup.ts
 │       ├── cache.ts
 │       └── logger.ts

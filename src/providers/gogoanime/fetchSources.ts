@@ -1,7 +1,7 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { cache } from "../../utils/cacheSetup";
-import { gogoCDN } from "./gogocdn";
+import { gogocdn } from "./gogocdn";
 import { streamwish } from "./streamwish";
 import { doodstream } from "./dood";
 
@@ -75,10 +75,10 @@ export const fetchSourcesGogo = async (
     const extractors: {
       [key: string]: (embedUrl: string) => Promise<DecData | null>;
     } = {
-      Vidstreaming: gogoCDN,
+      Vidstreaming: gogocdn,
       Streamwish: streamwish,
       Doodstream: doodstream,
-      "Gogo server": gogoCDN,
+      "Gogo server": gogocdn,
       // Add other server extractors here, e.g., Mp4Upload, Doodstream, Vidhide
     };
 
