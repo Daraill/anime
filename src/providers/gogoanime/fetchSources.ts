@@ -3,9 +3,11 @@ import * as cheerio from "cheerio";
 import { cache } from "../../utils/cacheSetup";
 import { gogoCDN } from "./gogocdn";
 import { streamwish } from "./streamwish";
+import { doodstream } from "./dood";
 
 interface Src {
   embed: string;
+  mp4?: string;
   m3u8?: string;
   m3u8_bk?: string;
   slides?: string;
@@ -22,6 +24,7 @@ interface CachedSrc {
 }
 
 interface DecData {
+  mp4?: string;
   m3u8?: string;
   m3u8_bk?: string;
   slides?: string;
@@ -74,6 +77,8 @@ export const fetchSourcesGogo = async (
     } = {
       Vidstreaming: gogoCDN,
       Streamwish: streamwish,
+      Doodstream: doodstream,
+      "Gogo server": gogoCDN,
       // Add other server extractors here, e.g., Mp4Upload, Doodstream, Vidhide
     };
 
@@ -134,6 +139,7 @@ export const fetchSourcesGogo = async (
                 embed: embedUrl,
                 m3u8: decData.m3u8,
                 m3u8_bk: decData.m3u8_bk,
+                mp4: decData.mp4,
                 slides: decData.slides,
               };
               console.log(`Successfully extracted sources from ${server}`);
