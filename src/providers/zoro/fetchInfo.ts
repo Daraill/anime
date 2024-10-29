@@ -1,10 +1,9 @@
 import axios from "axios";
 import { load } from "cheerio";
-import { Element } from "domhandler";
 import { cache } from "../../utils/cacheSetup";
 
-// Define the AnimeMeta interface
-interface ZoroMeta {
+// Define the ZoroInfo interface
+interface ZoroInfo {
   anime_id?: string;
   mal_id?: string;
   anilist_id?: string;
@@ -62,20 +61,18 @@ interface ZoroMeta {
 // Utility function to parse episode count
 const parseEpisodeCount = (text: string): number => {
   const cleanedText = text.match(/\d+/);
-  if (cleanedText) {
-    return parseInt(cleanedText[0], 10);
-  }
-  return 0;
+  return cleanedText ? parseInt(cleanedText[0], 10) : 0;
 };
 
 // Main function to fetch anime info
-export const fetchInfoZoro = async (id: string): Promise<ZoroMeta | null> => {
+export const fetchInfoZoro = async (id: string): Promise<ZoroInfo | null> => {
   const cacheKey = `zoro:${id}`;
 
-  // Check if data is in cache
-  if (await cache.has(cacheKey)) {
-    console.log(`Fetching anime info for id ${id} from cache`);
-    return cache.get(cacheKey);
+  // Try to get data from cache
+  const cachedData = await cache.get(cacheKey);
+  if (cachedData) {
+    // console.log(`Retrieved anime info for id ${id} from cache`);
+    return cachedData;
   }
 
   const url = `https://hianime.to/${id}`;
@@ -121,7 +118,7 @@ export const fetchInfoZoro = async (id: string): Promise<ZoroMeta | null> => {
     const $filmStats = $(".film-stats > .tick");
 
     // Extract and structure the anime information
-    const animeInfo: ZoroMeta = {
+    const animeInfo: ZoroInfo = {
       anime_id: syncData.anime_id,
       mal_id: syncData.mal_id,
       anilist_id: syncData.anilist_id,
@@ -147,13 +144,13 @@ export const fetchInfoZoro = async (id: string): Promise<ZoroMeta | null> => {
           $('.item-title:contains("Status") .name').text().trim() || undefined,
       },
       genres: $(".item-list a")
-        .map((i: number, el: Element) => $(el).text().trim())
+        .map((i: number, el: any) => $(el).text().trim())
         .get(),
       producers: $('.item-title:contains("Producers") a')
-        .map((i: number, el: Element) => $(el).text().trim())
+        .map((i: number, el: any) => $(el).text().trim())
         .get(),
       studios: $('.item-title:contains("Studios") a')
-        .map((i: number, el: Element) => $(el).text().trim())
+        .map((i: number, el: any) => $(el).text().trim())
         .get(),
       duration: $('.item-title:contains("Duration") .name').text().trim(),
       episodes: {
@@ -174,7 +171,7 @@ export const fetchInfoZoro = async (id: string): Promise<ZoroMeta | null> => {
         $filmStats.find(".tick-item.tick-quality").text().trim() || undefined,
       type: $(".dot").nextAll(".item").eq(0).text().trim() || undefined,
       characters: $(".bac-item")
-        .map((i: number, el: Element) => {
+        .map((i: number, el: any) => {
           const name = $(el).find(".pi-name").first().text().trim();
           const role = $(el).find(".pi-cast").first().text().trim();
           const voiceActorName = $(el)
@@ -202,7 +199,7 @@ export const fetchInfoZoro = async (id: string): Promise<ZoroMeta | null> => {
         })
         .get(),
       related_anime: $(".anif-block-ul li")
-        .map((i: number, el: Element) => ({
+        .map((i: number, el: any) => ({
           title: $(el).find(".film-name a").text().trim(),
           url: $(el).find(".film-name a").attr("href")?.trim() || "",
           type:
@@ -216,14 +213,14 @@ export const fetchInfoZoro = async (id: string): Promise<ZoroMeta | null> => {
         }))
         .get(),
       promotional_videos: $(".block_area-promotions .item")
-        .map((i: number, el: Element) => ({
+        .map((i: number, el: any) => ({
           title: ($(el).data("title") as string) || "",
           url: ($(el).data("src") as string) || "",
           thumbnail: $(el).find(".sit-img").attr("src") || "",
         }))
         .get(),
       seasons: $(".block_area-seasons .os-item")
-        .map((i: number, el: Element) => ({
+        .map((i: number, el: any) => ({
           title: $(el).attr("title")?.trim() || "",
           url: $(el).attr("href")?.trim() || "",
           thumbnail: (
@@ -250,8 +247,8 @@ export const fetchInfoZoro = async (id: string): Promise<ZoroMeta | null> => {
 // Example usage (Uncomment below lines to test)
 /*
 (async () => {
-    const animeId = 'dandadan-19319'; // Replace with actual anime ID from URL
-    const info = await fetchInfoZoro(animeId);
-    console.log(JSON.stringify(info, null, 2));
+  const animeId = 'dandadan-19319';
+  const info = await fetchInfoZoro(animeId);
+  console.log(JSON.stringify(info, null, 2));
 })();
 */

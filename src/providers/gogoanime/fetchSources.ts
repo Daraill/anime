@@ -1,9 +1,9 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { cache } from "../../utils/cacheSetup";
-import { gogocdn } from "./gogocdn";
-import { streamwish } from "./streamwish";
-import { doodstream } from "./dood";
+import { gogocdn } from "../../extractors/gogocdn";
+import { streamwish } from "../../extractors/streamwish";
+import { doodstream } from "../../extractors/dood";
 
 interface Src {
   embed: string;
@@ -40,7 +40,7 @@ interface DecData {
 export const fetchSourcesGogo = async (
   provider: string,
   id: string,
-  ep: string,
+  ep: number,
 ): Promise<SrcResponse> => {
   const srcs: { [key: string]: Src } = {};
   const epId = `${id}-episode-${ep}`;

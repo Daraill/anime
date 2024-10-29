@@ -1,5 +1,5 @@
 import axios from "axios";
-import { detect, unpack } from "./unpacker";
+import { detect, unpack } from "../utils/unpacker";
 
 interface DecData {
   m3u8?: string;

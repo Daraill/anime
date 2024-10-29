@@ -1,16 +1,10 @@
 import express from "express";
 import dotenv from "dotenv";
-import logger from "./utils/logger";
 import os from "os";
 import rateLimit from "express-rate-limit";
 import cors from "cors";
-import {
-  infoRouter,
-  episodesRouter,
-  serversRouter,
-  sourcesRouter,
-  mappingsRouter,
-} from ".";
+import router from "./routes";
+import { logger } from "./index";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -64,12 +58,8 @@ const limiter = rateLimit({
 // Apply Rate Limiting Middleware to All Requests
 app.use(limiter);
 
-// Mount Routers
-app.use("/info", infoRouter);
-app.use("/episodes", episodesRouter);
-app.use("/servers", serversRouter);
-app.use("/sources", sourcesRouter);
-app.use("/mappings", mappingsRouter);
+// Mount Centralized Router
+app.use("/", router);
 
 // Error Handling Middleware for CORS
 app.use(

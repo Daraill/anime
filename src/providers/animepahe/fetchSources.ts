@@ -1,123 +1,109 @@
 import axios, { type AxiosRequestConfig } from "axios";
 import * as cheerio from "cheerio";
-
-/**
- * Interface for Download Link Information
- */
-interface DownloadLink {
-  fansub: string;
-  resolution: string;
-  size: string;
-  url: string;
-}
-
-/**
- * Interface for Play Page Information
- */
-interface PlayPageInfo {
-  animeId: string;
-  episodeId: string;
-  title: string;
-  videoSession: string;
-  videoProvider: string;
-  videoUrl: string;
-  nextEpisodeLink: string | null;
-  downloadLinks: DownloadLink[];
-}
-
-/**
- * Fetches the m3u8 video URL by evaluating the JavaScript code embedded in the page.
- * @param url - The URL of the page containing the m3u8 link.
- * @returns The extracted m3u8 video URL.
- */
-const fetchM3U8Url = async (url: string): Promise<string> => {
-  const referer = "https://animepahe.ru/";
-
-  const pageContent = await fetch(url, {
-    headers: { Referer: referer },
-  }).then((response) => response.text());
-
-  const scriptContentMatch = /(eval)(\(function[\s\S]*?)(<\/script>)/s.exec(
-    pageContent,
-  );
-  const scriptContent = scriptContentMatch?.[2].replace("eval", "") || "";
-
-  const evaluatedScript = eval(scriptContent);
-  const m3u8LinkMatch = evaluatedScript.match(/https.*?m3u8/);
-  const m3u8Link = m3u8LinkMatch?.[0];
-
-  if (!m3u8Link) {
-    throw new Error("Failed to extract m3u8 link.");
-  }
-
-  return m3u8Link;
-};
-
-/**
- * Fetches the m3u8 video URL from the kiwi server.
- * @param url - The URL of the page hosted on the kiwi server.
- * @returns The extracted m3u8 video URL.
- */
-const fetchKiwiM3U8Url = async (url: string): Promise<string> => {
-  const pageContent = await fetch(url, {
-    headers: { Cookie: "__ddg1=;__ddg2_=" }, // DDoS protection cookies
-  }).then((response) => response.text());
-
-  const urlMatch = pageContent.match(/let url = "(.*)"/);
-  if (!urlMatch) {
-    throw new Error("Failed to extract video URL.");
-  }
-
-  const videoPageUrl = urlMatch[1];
-  const m3u8Url = await fetchM3U8Url(videoPageUrl);
-
-  return m3u8Url;
-};
+import {
+  type PaheApi,
+  type PahePlayInfo,
+  PAHE_HEADERS,
+  fetchPaheReleaseId,
+} from "./pahe";
+import { kwik } from "../../extractors/kwik";
+import { cache } from "../../index";
 
 /**
  * Fetches and extracts information from the AnimePahe play page.
  * @param provider - The provider name (e.g., 'animepahe').
- * @param id - The AnimePahe anime ID.
- * @param epId - The AnimePahe episode ID.
+ * @param id - The numeric ID of the anime.
+ * @param ep - The episode number.
  * @returns An object containing the extracted play page information.
  */
 export const fetchSourcesPahe = async (
   provider: string,
   id: string,
-  epId: string,
-): Promise<PlayPageInfo | null> => {
-  const playUri = `https://animepahe.ru/play/${id}/${epId}`;
+  ep: number,
+): Promise<PahePlayInfo | null> => {
+  const cacheKey = `animepahe:sources:${id}:${ep}`;
+
+  if (await cache.has(cacheKey)) {
+    return cache.get(cacheKey);
+  }
 
   try {
+    // Fetch the releaseId using the numeric ID
+    const releaseId = await fetchPaheReleaseId(id);
+
+    // Calculate the page number based on the episode number
+    const episodesPerPage = 30;
+    const pageNumber = Math.ceil(ep / episodesPerPage);
+
+    // Construct the API URL for the calculated page using releaseId
+    const apiUrl = `https://animepahe.ru/api?m=release&id=${releaseId}&sort=episode_asc&page=${pageNumber}`;
+
+    // Fetch the API page containing the desired episode
+    const apiResponse = await axios.get<PaheApi>(apiUrl, {
+      headers: PAHE_HEADERS,
+      timeout: 15000,
+    });
+
+    const episodesData = apiResponse.data;
+
+    if (!episodesData || !Array.isArray(episodesData.data)) {
+      console.error("Invalid API response structure.");
+      return null;
+    }
+
+    // Validate that the desired episode falls within the current page range
+    if (ep < episodesData.from || ep > episodesData.to) {
+      console.error(
+        `Episode ${ep} is out of range for page ${pageNumber} (Episodes ${episodesData.from}-${episodesData.to}).`,
+      );
+      return null;
+    }
+
+    // Calculate the index of the desired episode in the data array
+    const index = ep - episodesData.from;
+
+    // Retrieve the desired episode using the calculated index
+    const desiredEpisode = episodesData.data[index];
+
+    if (!desiredEpisode) {
+      console.error(
+        `Episode ${ep} not found in API response on page ${pageNumber}.`,
+      );
+      return null;
+    }
+
+    const epId = desiredEpisode.session;
+
+    if (!epId) {
+      console.error(`Session (epId) not found for episode ${ep}.`);
+      return null;
+    }
+
+    // Construct the play URI
+    const playUri = `https://animepahe.ru/play/${releaseId}/${epId}`;
+
     // Fetch the m3u8 video URL
-    const videoUrl = await fetchKiwiM3U8Url(playUri);
+    const videoUrl = await kwik(playUri);
 
     // Initialize the PlayPageInfo object
-    const playPageInfo: PlayPageInfo = {
+    const playPageInfo: PahePlayInfo = {
       animeId: id,
       episodeId: epId,
       title: "",
       videoSession: "",
       videoProvider: "",
       videoUrl,
-      nextEpisodeLink: null,
+      nextEpisodeUrl: null,
       downloadLinks: [],
     };
 
     // Axios configuration with necessary headers
     const axiosConfig: AxiosRequestConfig = {
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-          "AppleWebKit/537.36 (KHTML, like Gecko) " +
-          "Chrome/58.0.3029.110 Safari/537.3",
-        "Accept-Language": "en-US,en;q=0.9",
+        ...PAHE_HEADERS,
         Accept:
           "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         Connection: "keep-alive",
-        Referer: "https://animepahe.ru/", // Essential referer header
-        Host: "animepahe.ru", // Host header
-        Cookie: "__ddg1_=; __ddg2_=", // DDoS protection cookies
       },
       timeout: 15000,
       maxRedirects: 5,
@@ -155,7 +141,7 @@ export const fetchSourcesPahe = async (
     // Extract the next episode link, if available
     const sequelHref = $("div.sequel a").attr("href");
     if (sequelHref) {
-      playPageInfo.nextEpisodeLink = `https://animepahe.ru${sequelHref}`;
+      playPageInfo.nextEpisodeUrl = `https://animepahe.ru${sequelHref}`;
     }
 
     // Extract download links from the dropdown menu
@@ -188,10 +174,13 @@ export const fetchSourcesPahe = async (
       return null;
     }
 
+    // Cache the result
+    cache.set(cacheKey, playPageInfo);
+
     return playPageInfo;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      console.error("Error scraping AnimePahe play page:");
+      console.error("Error fetching sources from AnimePahe:");
 
       if (error.response) {
         console.error(`Status: ${error.response.status}`);
@@ -208,15 +197,3 @@ export const fetchSourcesPahe = async (
     return null;
   }
 };
-
-// Usage example (for testing purposes)
-// (async () => {
-//     const playPageData = await fetchSourcesPahe(
-//         'animepahe',
-//         '246daabb-53cb-b0b4-92ce-602d65d22c2f',
-//         'dbf49a7becc5bfd8c15f0dee4d743c593e36171500b0531de5ccf71734a082ec'
-//     );
-//     if (playPageData) {
-//         console.log('Play Page Information:', playPageData);
-//     }
-// })();

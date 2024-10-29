@@ -1,5 +1,6 @@
 import axios from "axios";
 import { cache } from "../../index";
+import type { ContentType, Provider } from "../../types/enums";
 
 /**
  * Interface for Site Information
@@ -38,12 +39,6 @@ interface MappingResponse {
   malId: number;
   Sites: Sites;
 }
-
-/**
- * Allowed Providers and Types
- */
-type Provider = "anilist" | "mal";
-type ContentType = "anime" | "manga";
 
 /**
  * Fetch Mapping Data from Primary API and Fallback GitHub Sources

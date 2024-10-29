@@ -1,14 +1,15 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
-import { type CheerioAPI } from "cheerio";
 import { cache } from "../../index";
 
 export const fetchInfoGogo = async (id: string) => {
   const cacheKey = `gogo:${id}`;
 
-  if (await cache.has(cacheKey)) {
-    console.log(`Fetching anime info for id ${id} from cache`);
-    return cache.get(cacheKey);
+  // Try to get data from cache
+  const cachedData = await cache.get(cacheKey);
+  if (cachedData) {
+    // console.log(`Retrieved anime info for id ${id} from cache`);
+    return cachedData;
   }
 
   const url = `https://anitaku.pe/category/${id}`;
@@ -39,6 +40,7 @@ export const fetchInfoGogo = async (id: string) => {
       episodes: getTotalEpisodes($),
     };
 
+    // Store in cache
     cache.set(cacheKey, animeInfo);
 
     return {
@@ -54,7 +56,11 @@ export const fetchInfoGogo = async (id: string) => {
       episodes: animeInfo.episodes,
     };
   } catch (error) {
-    console.error("Error fetching anime info:", error);
+    if (axios.isAxiosError(error)) {
+      console.error(`Axios error while fetching ${url}:`, error.message);
+    } else {
+      console.error(`Unexpected error while fetching ${url}:`, error);
+    }
     return null;
   }
 };
@@ -64,8 +70,17 @@ export const fetchInfoGogo = async (id: string) => {
  * @param $ - Cheerio instance
  * @returns {number} - Total number of episodes
  */
-const getTotalEpisodes = ($: CheerioAPI): number => {
+const getTotalEpisodes = ($: any): number => {
   const lastEpisodeElement = $("#episode_page li a").last();
   const epEnd = parseInt(lastEpisodeElement.attr("ep_end") || "0", 10);
   return isNaN(epEnd) ? 0 : epEnd;
 };
+
+// Example usage (Uncomment below lines to test)
+/*
+(async () => {
+  const animeId = 'naruto';
+  const info = await fetchInfoGogo(animeId);
+  console.log(JSON.stringify(info, null, 2));
+})();
+*/

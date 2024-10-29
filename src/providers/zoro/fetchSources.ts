@@ -44,7 +44,7 @@ const DEFAULT_HEADERS = {
 export const fetchSourcesZoro = async (
   provider: string,
   id: string,
-  ep: string,
+  ep: number,
 ): Promise<Source | null> => {
   const cacheKey = `zoro:sources:${id}`;
 

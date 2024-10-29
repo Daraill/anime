@@ -1,8 +1,6 @@
 // * Exporting from providers
 export { fetchInfoGogo } from "./providers/gogoanime/fetchInfo";
 export { fetchSourcesGogo } from "./providers/gogoanime/fetchSources";
-export { gogocdn } from "./providers/gogoanime/gogocdn";
-export { streamwish } from "./providers/gogoanime/streamwish";
 
 export { fetchInfoAnimepahe } from "./providers/animepahe/fetchInfo";
 export { fetchSourcesPahe } from "./providers/animepahe/fetchSources";
@@ -17,14 +15,17 @@ export { infoQuery } from "./providers/anilist/queries";
 
 export { fetchMappings } from "./providers/malsync/fetchMappings";
 
-// * Exporting from routes
-export { default as infoRouter } from "./routes/info";
-export { default as episodesRouter } from "./routes/episodes";
-export { default as serversRouter } from "./routes/servers";
-export { default as sourcesRouter } from "./routes/sources";
-export { default as mappingsRouter } from "./routes/mappings";
+// * Exporting from extractors
+export { gogocdn } from "./extractors/gogocdn";
+export { streamwish } from "./extractors/streamwish";
+export { doodstream } from "./extractors/dood";
 
 // * Exporting from utils
 export { cache } from "./utils/cacheSetup";
 export { redisCache } from "./utils/cache";
 export { default as logger } from "./utils/logger";
+export { detect, unpack } from "./utils/unpacker";
+
+// * Exporting from types
+export { ContentType, Provider } from "./types/enums";
+export { type UsageResponse } from "./types/types";
